@@ -30,11 +30,16 @@ public class IKDDhw12
 			connection = DriverManager.getConnection("jdbc:postgresql://127.0.0.1:5432/postgres", "postgres", "123456");
 			Statement st = connection.createStatement();
 			//Drop table raindata
-			String droptableSQL = "DROP TABLE IF EXISTS raindata";
-			st.executeUpdate(droptableSQL);
+			String dropraindataSQL = "DROP TABLE IF EXISTS raindata";
+			st.executeUpdate(dropraindataSQL);
+			
+			String droptempSQL = "DROP TABLE IF EXISTS temp";
+			st.executeUpdate(droptempSQL);
+			
 			//Create table raindata
-			String createtableSQL = "CREATE TABLE rainData (SiteId varchar(20), SiteName varchar(20), County varchar(20), Township varchar(20), TWD67Lon decimal(8, 4), TWD67Lat decimal(7, 4), Rainfall10min decimal(8, 2), Rainfall1hr decimal(8, 2), Rainfall3hr decimal(8, 2), Rainfall6hr decimal(8, 2), Rainfall12hr decimal(8, 2), Rainfall24hr decimal(8, 2), Now varchar(20), Unit varchar(20), PublishTime varchar(20))";
-			st.executeUpdate(createtableSQL);
+			String creatertableSQL = "CREATE TABLE rainData (SiteId varchar(20), SiteName varchar(20), County varchar(20), Township varchar(20), TWD67Lon decimal(8, 4), TWD67Lat decimal(7, 4), Rainfall10min decimal(8, 2), Rainfall1hr decimal(8, 2), Rainfall3hr decimal(8, 2), Rainfall6hr decimal(8, 2), Rainfall12hr decimal(8, 2), Rainfall24hr decimal(8, 2), Now varchar(20), Unit varchar(20), PublishTime varchar(20))";
+			st.executeUpdate(creatertableSQL);
+			
 			//Get CSV filenames
 			File path = new File("data");
         	ArrayList<String> fileList = new ArrayList<String>();
@@ -47,20 +52,29 @@ public class IKDDhw12
 		        		fileList.add(s[i]); 
 		        }
 		    }
-        	//Read CSV files
-        	
+        	//Read CSV files        	
 		    for(int i=0;i<fileList.size();i++)
 		    {
 		        String copydbSQL = "COPY raindata FROM '/home/maikaze/data/"+ fileList.get(i) + "' DELIMITERS ',' CSV HEADER";
 		        st.executeUpdate(copydbSQL);
-		    }
-		    //Count the number of the site
-		    int counter = 0;
+		    }		    
+		    
+		    String selectdistictrSQL = "select distinct * into temp from raindata";
+			st.executeUpdate(selectdistictrSQL);
+			String dropraindata = "drop table raindata";
+			st.executeUpdate(dropraindata);
+			String selectdisticttSQL = "select * into raindata from temp";
+			st.executeUpdate(selectdisticttSQL);
+			String droptemp = "drop table temp";
+			st.executeUpdate(droptemp);
+		    
+			int counter = 0;
 			String selectdbSQL = "SELECT siteId, SUM(rainfall10min) FROM raindata GROUP BY siteId HAVING SUM(rainfall10min)>0";
 			ResultSet selectdbResult = st.executeQuery(selectdbSQL);
+			System.out.println("SiteID\t" + "SUM");
 			while(selectdbResult.next())
 			{
-				System.out.println("SiteID:" + selectdbResult.getString("siteId"));
+				System.out.println(selectdbResult.getString("siteId") + "\t" + selectdbResult.getString("sum"));
 				counter++;
 			}
 			System.out.println("Total number:" + counter);
@@ -77,8 +91,9 @@ public class IKDDhw12
 			st.executeUpdate(setGeomSQL);
 			String geoDisSQL = "SELECT siteId FROM raindata WHERE ST_DWithin(geom, ST_GeomFromText('POINT(120.221341 22.997255)', 4326), 0.1 ) GROUP BY siteID";
 			ResultSet distanceResult = st.executeQuery(geoDisSQL);
+			System.out.println("SiteID");
 			while(distanceResult.next())
-				System.out.println("SiteID:" + distanceResult.getString("siteId"));
+				System.out.println(distanceResult.getString("siteId"));
 			//Close connection
 		    connection.close();
 		}
